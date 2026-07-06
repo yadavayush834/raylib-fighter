@@ -1,0 +1,16 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "WinLibs",
+            "compilerPath": "D:/DOWNLOADS/winlibs-x86_64-posix-seh-gcc-16.1.0-mingw-w64ucrt-14.0.0-r3/mingw64/bin/gcc.exe",
+            "intelliSenseMode": "windows-gcc-x64",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "D:/raylib/include"
+            ]
+        }
+    ]
+}
