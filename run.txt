@@ -1,0 +1,8 @@
+gcc main.c -o main.exe -lraylib -lopengl32 -lgdi32 -lwinmm
+
+.\main.exe
+
+Set-Location 'd:\user2\dih_fighter'; .\main.exe
+
+
+gcc main.c -o main.exe -I"D:\DOWNLOADS\raylib-6.0_win64_mingw-w64\raylib-6.0_win64_mingw-w64\include" -L"D:\DOWNLOADS\raylib-6.0_win64_mingw-w64\raylib-6.0_win64_mingw-w64\lib" -lraylib -lopengl32 -lgdi32 -lwinmm

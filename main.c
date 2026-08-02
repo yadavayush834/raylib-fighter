@@ -5,6 +5,9 @@ typedef struct Fighter{
     float velocityY ;
     bool isJumping;
     int health;
+    bool facingRight;
+    bool isPunching;
+    int punchFrame;
 }Fighter;
 
 
@@ -18,14 +21,18 @@ int main(void){
         .body = {200, 400, 60, 120},
         .velocityY = 0,
         .isJumping = false,
-        .health = 100
+        .health = 100,
+        .isPunching = false,
+        .punchFrame = 0 
     };
 
     Fighter enemy = {
         .body = {700, 400, 60, 120},
         .velocityY = 0,
         .isJumping = false,
-        .health = 100
+        .health = 100,
+        .isPunching = false,
+        .punchFrame = 0 
     };
 
     const float gravity = 0.7f;
@@ -37,19 +44,38 @@ int main(void){
 
         if(IsKeyDown(KEY_A)){
             player.body.x -= 5;
+            player.facingRight = false; 
+
         }
 
         if(IsKeyDown(KEY_D)){
             player.body.x += 5;
+            player.facingRight = true;
         }
-
-        if(IsKeyPressed(KEY_W) && !player.isJumping){
+        //! player.isJumping
+        if (IsKeyPressed(KEY_W) && !player.isJumping)
+        {
             player.velocityY = jumpForce;
+           
             player.isJumping = true;
         }
 
+        if(IsKeyPressed(KEY_J) && !player.isPunching){
+            player.isPunching = true;
+            player.punchFrame = 12 ;
+
+        }
+
+        if(player.isPunching){
+            player.punchFrame--;
+
+            if(player.punchFrame <=0 ){
+                player.isPunching = false;
+            }
+        }
+
         player.velocityY += gravity;
-        player.body.y = player.velocityY;
+        player.body.y += player.velocityY;
 
         if (player.body.y >= 400)
         {
@@ -57,7 +83,30 @@ int main(void){
             player.velocityY = 0;
             player.isJumping = false;
         }
+        Rectangle punchbox = {0};
 
+
+        if(player.isPunching){
+            if(player.facingRight){
+                punchbox = (Rectangle){
+                    player.body.x + player.body.width,
+                    player.body.y+30 , 
+                    40,
+                    30
+
+
+                };
+            }
+            else{
+                punchbox = (Rectangle){
+                    player.body.x -40,
+                    player.body.y+30,
+                    40,
+                    30
+                };
+
+            }
+        }
         BeginDrawing();
         ClearBackground(RAYWHITE);
         DrawRectangle(0,520,screenwidth,80,DARKGRAY);
@@ -71,6 +120,8 @@ int main(void){
         //fighters
         DrawRectangleRec(player.body,BLUE);
         DrawRectangleRec(enemy.body,RED);
+
+        DrawRectangleRec(punchbox,ORANGE);
         DrawText("A/D = Move", 20, 70, 20, WHITE);
         DrawText("W = Jump", 20, 100, 20, WHITE);
         EndDrawing();
