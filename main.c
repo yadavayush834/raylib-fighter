@@ -238,7 +238,7 @@ int main(int argc, char **argv) {
                 DrawResults(&art, &game, resultSelection);
         }
         EndTextureMode();
-        if (!capture && IsKeyPressed(KEY_F12)) {
+        if (!capture && IsKeyPressed(KEY_F9)) {
             char folder[2048], filename[2304], stamp[64];
             time_t now = time(NULL);
             strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", localtime(&now));

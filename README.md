@@ -41,7 +41,7 @@ Run `./scripts/install-desktop.sh` on Linux to add **Spirit Clash** to your app 
 | Spirit burst | L | Slash or Numpad 3 |
 | Dash | Space | Right Shift or Numpad 0 |
 
-**Enter** selects a menu item. **Esc** pauses. **F10** toggles fullscreen, **M** mutes, **V** reduces camera/ambient motion, and **H** shows hitboxes. **F12** saves a screenshot beside the executable in `screenshots/`. On the title screen, Left/Right changes CPU difficulty and **Q** exits.
+**Enter** selects a menu item. **Esc** pauses. **F10** toggles fullscreen, **M** mutes, **V** reduces camera/ambient motion, and **H** shows hitboxes. **F9** saves a screenshot beside the executable in `screenshots/`. On the title screen, Left/Right changes CPU difficulty and **Q** exits.
 
 ## Development
 
