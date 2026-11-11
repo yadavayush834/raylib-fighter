@@ -1,0 +1,8 @@
+build/
+build-*/
+*.exe
+*.o
+*.a
+*.so
+*.dll
+.DS_Store
