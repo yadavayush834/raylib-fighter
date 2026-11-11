@@ -19,13 +19,15 @@ An anime-inspired 2D arena fighter built in **C17 + raylib**. Ren and Kae face o
 On Arch Linux, install the build tools and raylib once:
 
 ```sh
-sudo pacman -S --needed raylib cmake gcc
+sudo pacman -S --needed raylib cmake gcc git pkgconf wayland wayland-protocols libxkbcommon mesa
 git clone https://github.com/yadavayush834/raylib-fighter.git
 cd raylib-fighter
 ./scripts/run.sh
 ```
 
-CMake also supports other desktop platforms and fetches raylib 6.2 if an installed 6.x version is unavailable. Linux source builds need the usual X11/OpenGL development packages. Once built, the game and all assets work offline.
+On Wayland desktops such as Hyprland, CMake builds a native Wayland raylib backend automatically. The game renders at the framebuffer’s actual pixel density, keeping text sharp with fractional scaling. The first build downloads raylib 6.2; subsequent runs work offline.
+
+Other desktop sessions use an installed raylib 6.x or fetch 6.2. Use `-DSPIRIT_NATIVE_WAYLAND=OFF` when configuring an X11 build; Linux X11 source builds need X11/OpenGL development packages.
 
 Run `./scripts/install-desktop.sh` on Linux to add **Spirit Clash** to your app launcher.
 

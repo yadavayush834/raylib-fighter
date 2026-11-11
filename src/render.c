@@ -1,4 +1,5 @@
 #include "render.h"
+#include "rlgl.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -29,7 +30,7 @@ void ArtLoad(Art *a) {
         SetTextureFilter(a->fighters, TEXTURE_FILTER_BILINEAR);
     if (a->walks.id)
         SetTextureFilter(a->walks, TEXTURE_FILTER_BILINEAR);
-    a->display = LoadFontEx(Asset("fonts/BarlowCondensed-Bold.ttf"), 160, NULL, 0);
+    a->display = LoadFontEx(Asset("fonts/BarlowCondensed-Bold.ttf"), 240, NULL, 0);
     a->body = LoadFontEx(Asset("fonts/Barlow-SemiBold.ttf"), 36, NULL, 0);
     if (!a->display.texture.id)
         a->display = GetFontDefault();
@@ -374,9 +375,8 @@ static void Controls(const Art *a, bool local) {
 void DrawMatch(const Art *a, const Game *g, bool hitboxes, bool reducedMotion) {
     DrawArena(a, reducedMotion ? 0 : g->totalTime, false);
     float shake = reducedMotion ? 0 : g->shake;
-    Camera2D camera = {.offset = {sinf(g->totalTime * 175) * shake, cosf(g->totalTime * 143) * shake * .5f},
-                       .zoom = 1};
-    BeginMode2D(camera);
+    rlPushMatrix();
+    rlTranslatef(sinf(g->totalTime * 175) * shake, cosf(g->totalTime * 143) * shake * .5f, 0);
     DrawFighter(a, &g->fighters[0], 0, g->totalTime, 1.45f);
     DrawFighter(a, &g->fighters[1], 1, g->totalTime + 1, 1.45f);
     for (int i = 0; i < MAX_PROJECTILES; ++i) {
@@ -408,7 +408,7 @@ void DrawMatch(const Art *a, const Game *g, bool hitboxes, bool reducedMotion) {
                 DrawRectangleLinesEx(FighterAttackbox(&g->fighters[i]), 1, RED);
         }
     }
-    EndMode2D();
+    rlPopMatrix();
     TextLabel(a->display, "SPIRIT / CLASH", (Vector2){36, 14}, 15, Fade(PAPER, .7f));
     RightLabel(a->body,
                g->mode == MODE_LOCAL      ? "LOCAL VERSUS"

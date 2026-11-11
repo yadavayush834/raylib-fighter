@@ -89,7 +89,8 @@ int main(int argc, char **argv) {
         fputs("Unknown scene. Use menu, fight, pause or results.\n", stderr);
         return 1;
     }
-    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE | (capture ? FLAG_WINDOW_HIDDEN : 0));
+    SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI |
+                   (capture ? FLAG_WINDOW_HIDDEN : 0));
     SetTraceLogLevel(LOG_WARNING);
     InitWindow(capture ? 1280 : 1120, capture ? 720 : 630, "Spirit Clash | Raylib Fighter");
     if (!IsWindowReady())
@@ -226,7 +227,27 @@ int main(int argc, char **argv) {
             game.fighters[0].wins = 2;
             game.fighters[1].wins = 1;
         }
+        // Keep simulation and input in logical coordinates, but rasterize at physical display pixels.
+        float density =
+            capture ? 1.0f : fminf((float)GetRenderWidth() / ARENA_W, (float)GetRenderHeight() / ARENA_H);
+        int targetWidth = (int)fmaxf(1, roundf(ARENA_W * density));
+        int targetHeight = (int)fmaxf(1, roundf(ARENA_H * density));
+        if (targetWidth != canvas.texture.width || targetHeight != canvas.texture.height) {
+            RenderTexture2D resized = LoadRenderTexture(targetWidth, targetHeight);
+            if (resized.id) {
+                UnloadRenderTexture(canvas);
+                canvas = resized;
+                SetTextureFilter(canvas.texture, TEXTURE_FILTER_BILINEAR);
+            }
+        }
+        if (getenv("SPIRIT_RENDER_STATS") && (frame == 0 || IsWindowResized())) {
+            printf("render: window=%dx%d framebuffer=%dx%d canvas=%dx%d\n", GetScreenWidth(),
+                   GetScreenHeight(), GetRenderWidth(), GetRenderHeight(), canvas.texture.width,
+                   canvas.texture.height);
+            fflush(stdout);
+        }
         BeginTextureMode(canvas);
+        BeginMode2D((Camera2D){.zoom = (float)canvas.texture.width / ARENA_W});
         ClearBackground((Color){15, 15, 39, 255});
         if (title)
             DrawMenu(&art, reducedMotion ? 0 : menuTime, selected, difficulty, audio.muted);
@@ -237,6 +258,7 @@ int main(int argc, char **argv) {
             if (game.phase == MATCH_END)
                 DrawResults(&art, &game, resultSelection);
         }
+        EndMode2D();
         EndTextureMode();
         if (!capture && IsKeyPressed(KEY_F9)) {
             char folder[2048], filename[2304], stamp[64];
@@ -250,9 +272,9 @@ int main(int argc, char **argv) {
         }
         BeginDrawing();
         ClearBackground((Color){9, 10, 20, 255});
-        DrawTexturePro(canvas.texture, (Rectangle){0, 0, ARENA_W, -ARENA_H},
-                       (Rectangle){offset.x, offset.y, ARENA_W * scale, ARENA_H * scale}, (Vector2){0}, 0,
-                       WHITE);
+        DrawTexturePro(
+            canvas.texture, (Rectangle){0, 0, (float)canvas.texture.width, -(float)canvas.texture.height},
+            (Rectangle){offset.x, offset.y, ARENA_W * scale, ARENA_H * scale}, (Vector2){0}, 0, WHITE);
         EndDrawing();
         frame++;
         if (capture && frame >= frames) {
