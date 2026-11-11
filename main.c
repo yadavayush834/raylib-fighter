@@ -73,7 +73,8 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[i], "--demo") == 0)
             demo = true;
         else if (strcmp(argv[i], "--help") == 0) {
-            puts("Spirit Clash | --demo | --capture FILE [--scene menu|fight|pause|results] [--frames N]");
+            puts("Spirit Clash | --demo | --capture FILE [--scene menu|fight|hurt|pause|results] [--frames "
+                 "N]");
             return 0;
         } else {
             fprintf(stderr, "Unknown argument: %s\n", argv[i]);
@@ -85,8 +86,8 @@ int main(int argc, char **argv) {
         return 1;
     }
     if (strcmp(scene, "menu") && strcmp(scene, "fight") && strcmp(scene, "pause") &&
-        strcmp(scene, "results")) {
-        fputs("Unknown scene. Use menu, fight, pause or results.\n", stderr);
+        strcmp(scene, "results") && strcmp(scene, "hurt")) {
+        fputs("Unknown scene. Use menu, fight, hurt, pause or results.\n", stderr);
         return 1;
     }
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI |
@@ -226,6 +227,20 @@ int main(int argc, char **argv) {
             game.winner = 0;
             game.fighters[0].wins = 2;
             game.fighters[1].wins = 1;
+        }
+        if (capture && strcmp(scene, "hurt") == 0 && frame >= frames - 1) {
+            game.phase = ROUND_FIGHT;
+            for (int i = 0; i < 2; ++i) {
+                Fighter *f = &game.fighters[i];
+                f->position = (Vector2){i == 0 ? 430 : 850, GROUND_Y};
+                f->facing = i == 0 ? 1 : -1;
+                f->grounded = true;
+                f->blocking = false;
+                f->action = ACTION_IDLE;
+                f->hurtDuration = .3f;
+                f->stun = i == 0 ? .22f : .1f;
+                f->hurtDirection = -f->facing;
+            }
         }
         // Keep simulation and input in logical coordinates, but rasterize at physical display pixels.
         float density =

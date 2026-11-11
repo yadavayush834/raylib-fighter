@@ -8,5 +8,5 @@ This is a C17/raylib 6.x desktop fighting game. Preserve the native C/raylib sta
 - Sprite sheets use four columns and two rows, Ren above Kae. Character artwork is loaded from local `assets/`; the game must work offline.
 - Build with `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release` and `cmake --build build --parallel 4`.
 - Verify combat changes with `ctest --test-dir build --output-on-failure`. Assertions must remain enabled in tests even in Release builds.
-- Use `--capture /absolute/path.png --scene menu|fight|pause|results --frames N` for deterministic rendered checks. Fight capture uses an actual seeded AI exhibition. Pause/results options are rendering fixtures.
+- Use `--capture /absolute/path.png --scene menu|fight|hurt|pause|results --frames N` for deterministic rendered checks. Fight capture uses an actual seeded AI exhibition. Hurt/pause/results options are rendering fixtures.
 - Update screenshots for visible changes. Do not commit build directories, executable binaries, or third-party source checkouts.

@@ -129,7 +129,31 @@ static void TestDeterministicAI(void) {
     assert(a.fighters[1].health == b.fighters[1].health);
     assert(a.phase == MATCH_END);
 }
+static void TestHurtReaction(void) {
+    for (int attacker = 0; attacker < 2; ++attacker) {
+        Game g = Fight();
+        FighterInput attack = {.heavy = true};
+        for (int i = 0; i < 80 && g.fighters[1 - attacker].health == MAX_HEALTH; ++i) {
+            GameUpdate(&g, attacker == 0 ? attack : (FighterInput){0},
+                       attacker == 1 ? attack : (FighterInput){0}, FIXED_DT);
+            attack.heavy = false;
+        }
+        Fighter *target = &g.fighters[1 - attacker];
+        assert(target->health < MAX_HEALTH);
+        assert(target->stun > 0 && target->hurtDuration == target->stun);
+        assert(target->hurtDirection == (attacker == 0 ? 1 : -1));
+        float stun = target->stun;
+        Tick(&g, 1, (FighterInput){0}, (FighterInput){0});
+        assert(target->stun == stun); // Impact pose freezes during hitstop.
+        Tick(&g, 100, (FighterInput){0}, (FighterInput){0});
+        assert(target->stun == 0); // Recovery finishes; pose must not stick.
+    }
+    Game guarded = Fight();
+    Tick(&guarded, 30, (FighterInput){.light = true}, (FighterInput){.block = true});
+    assert(guarded.fighters[1].hurtDuration == 0);
+}
 int main(void) {
+    TestHurtReaction();
     TestAttackWindows();
     TestDirectionalGuard();
     TestWhiff();
@@ -142,6 +166,6 @@ int main(void) {
     TestTraining();
     TestBufferedAttack();
     TestDeterministicAI();
-    puts("12 combat regression checks passed.");
+    puts("13 combat regression checks passed.");
     return 0;
 }

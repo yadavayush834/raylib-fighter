@@ -2,7 +2,7 @@
 #define SPIRIT_RENDER_H
 #include "combat.h"
 typedef struct {
-    Texture2D backdrop, fighters, walks;
+    Texture2D backdrop, fighters, walks, hurt;
     Font display, body;
 } Art;
 void ArtLoad(Art *art);

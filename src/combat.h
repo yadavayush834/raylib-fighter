@@ -33,6 +33,8 @@ typedef struct {
     Vector2 position, velocity;
     float health, healthTrail, energy;
     float stun, invincible, actionTime, comboTime, bufferTime;
+    float hurtDuration;
+    int hurtDirection;
     int facing, wins, combo;
     Action action, bufferedAction;
     bool grounded, blocking, connected;

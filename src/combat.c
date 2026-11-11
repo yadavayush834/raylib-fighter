@@ -209,6 +209,8 @@ static void Hit(Game *g, int attacker, float damage, float push, Vector2 impact,
     } else {
         target->health = fmaxf(0, target->health - damage);
         target->stun = heavy ? 0.3f : 0.17f;
+        target->hurtDuration = target->stun;
+        target->hurtDirection = push >= 0 ? 1 : -1;
         target->blocking = false;
         target->action = ACTION_IDLE;
         target->velocity.x = push;

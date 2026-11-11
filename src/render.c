@@ -26,6 +26,10 @@ void ArtLoad(Art *a) {
         a->fighters = LoadTexture(Asset("fighters.png"));
     if (FileExists(Asset("walks.png")))
         a->walks = LoadTexture(Asset("walks.png"));
+    if (FileExists(Asset("hurt.png")))
+        a->hurt = LoadTexture(Asset("hurt.png"));
+    if (a->hurt.id)
+        SetTextureFilter(a->hurt, TEXTURE_FILTER_BILINEAR);
     if (a->fighters.id)
         SetTextureFilter(a->fighters, TEXTURE_FILTER_BILINEAR);
     if (a->walks.id)
@@ -48,6 +52,8 @@ void ArtUnload(Art *a) {
         UnloadTexture(a->fighters);
     if (a->walks.id)
         UnloadTexture(a->walks);
+    if (a->hurt.id)
+        UnloadTexture(a->hurt);
     if (a->display.texture.id != GetFontDefault().texture.id)
         UnloadFont(a->display);
     if (a->body.texture.id != GetFontDefault().texture.id)
@@ -258,6 +264,8 @@ void DrawFighter(const Art *a, const Fighter *f, int index, float time, float sc
     bool heavy = f->action == ACTION_HEAVY && f->actionTime > .16f && f->actionTime < .39f;
     bool special = f->action == ACTION_SPECIAL;
     bool dash = f->action == ACTION_DASH;
+    bool hurt = f->stun > 0 && f->hurtDuration > 0;
+    float hurtProgress = hurt ? fminf(1, 1 - f->stun / f->hurtDuration) : 1;
     int pose = heavy ? 2 : light || special ? 1 : f->blocking ? 3 : 0;
     Texture2D sheet = a->fighters;
     float frameWidth = (float)sheet.width / 4;
@@ -266,13 +274,23 @@ void DrawFighter(const Art *a, const Fighter *f, int index, float time, float sc
     float pivot = pivots[pose] / 384 * frameWidth;
     float baseline = (index == 0 ? 476 : 494) / 512.0f * frameHeight;
     float bob = f->grounded && f->action == ACTION_IDLE ? sinf(time * 4) * 1.5f : 0;
-    if (a->walks.id && fabsf(f->velocity.x) > 40 && f->action == ACTION_IDLE && f->grounded && !f->blocking) {
+    if (!hurt && a->walks.id && fabsf(f->velocity.x) > 40 && f->action == ACTION_IDLE && f->grounded &&
+        !f->blocking) {
         sheet = a->walks;
         pose = (int)(time * 9) % 4;
         frameWidth = (float)sheet.width / 4;
         frameHeight = (float)sheet.height / 2;
         pivot = frameWidth * .56f;
         baseline = frameHeight * (index == 0 ? .922f : .951f);
+        bob = 0;
+    }
+    if (hurt && a->hurt.id) {
+        sheet = a->hurt;
+        pose = f->health <= 0 ? 1 : (int)fminf(3, hurtProgress * 4);
+        frameWidth = (float)sheet.width / 4;
+        frameHeight = (float)sheet.height / 2;
+        pivot = frameWidth * .5f;
+        baseline = frameHeight * ((index == 0 ? 476.0f : 494.0f) / 512);
         bob = 0;
     }
     Rectangle source = {pose * frameWidth, index * frameHeight, f->facing > 0 ? frameWidth : -frameWidth,
@@ -290,9 +308,19 @@ void DrawFighter(const Art *a, const Fighter *f, int index, float time, float sc
             DrawTexturePro(sheet, source, trail, origin, 0, Fade(accent, .12f * (4 - i)));
         }
     }
-    Color tint = f->stun > .1f ? (Color){255, 200, 200, 255} : WHITE;
-    float tilt = dash ? f->facing * 9 : !f->grounded ? f->facing * -4 : 0;
+    Color tint = hurt ? (Color){255, 225, 225, 255} : WHITE;
+    float tilt = hurt           ? f->hurtDirection * 8 * (1 - hurtProgress)
+                 : dash         ? f->facing * 9
+                 : !f->grounded ? f->facing * -4
+                                : 0;
     DrawTexturePro(sheet, source, destination, origin, tilt, tint);
+    // A short additive flash follows the hit timer, so hitstop holds the impact frame.
+    if (hurt && f->health > 0 && hurtProgress < .24f) {
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawTexturePro(sheet, source, destination, origin, tilt,
+                       Fade(WHITE, .55f * (1 - hurtProgress / .24f)));
+        EndBlendMode();
+    }
     if (f->blocking)
         DrawCircleLines((int)(f->position.x + f->facing * 25), (int)(f->position.y - 125), 70 * scale,
                         Fade(CYAN, .55f));

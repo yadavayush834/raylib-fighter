@@ -9,10 +9,12 @@ An anime-inspired 2D arena fighter built in **C17 + raylib**. Ren and Kae face o
 - **Solo duel** against a computer opponent with Easy, Normal, and Hard difficulty.
 - **Local versus** for two players on one keyboard.
 - **Training** with unlimited spirit and a recovering sparring partner.
-- Animated character poses, hit sparks, projectile clashes, guard effects, and synthesized sound.
+- Animated movement and four-frame damage reactions for both fighters, with recoil, hit flashes, sparks, projectile clashes, guard effects, and synthesized sound.
 - Fixed-step combat, short input buffering, directional guard, dash invulnerability, and single-hit attack windows.
 
 ![An actual seeded exhibition match](docs/screenshots/fight.png)
+
+[Preview the damage reaction sprites](docs/screenshots/hurt.png).
 
 ## Build and run
 
