@@ -284,9 +284,13 @@ static void BeginAction(Game *g, int index, Action action, bool cancel) {
         Emit(g, EV_WHIFF, Chest(f), index, 1);
         break;
     case ACTION_HEAVY:
+        if (cancel && f->grounded)
+            f->velocity.x = f->facing * 280.0f; // chained attacks lurch forward so links survive pushback
         Emit(g, EV_WHIFF, Chest(f), index, 2);
         break;
     case ACTION_LIGHT:
+        if (cancel && f->grounded)
+            f->velocity.x = f->facing * 260.0f;
         Emit(g, EV_WHIFF, Chest(f), index, 1);
         break;
     default:
@@ -446,7 +450,7 @@ static HitSpec MeleeSpec(const Fighter *f) {
     case ACTION_SUPER:
         return (HitSpec){36, 0.6f, dir * 40, 0, 0.03f, 3, .super = true};
     default:
-        return (HitSpec){64, 0.28f, dir * 270, 0, 0.06f, 1, false, false, false};
+        return (HitSpec){64, 0.28f, dir * 230, 0, 0.06f, 1, false, false, false};
     }
 }
 

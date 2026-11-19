@@ -9,8 +9,11 @@ enum { S_NONE, S_ATTACK, S_JUMPIN, S_PROJECTILE, S_WHIFF, S_DASHIN };
 
 static const float REACTION[3] = {0.36f, 0.22f, 0.13f};
 static const float ACCURACY[3] = {0.30f, 0.62f, 0.88f};
-static const float COMBO_SKILL[3] = {0.25f, 0.72f, 0.97f};
+static const float COMBO_SKILL[3] = {0.3f, 0.6f, 0.97f};
 static const float AGGRESSION[3] = {0.40f, 0.58f, 0.74f};
+static const float GUARD_READ[3] = {0.25f, 0.45f, 0.8f}; // chance to anticipate pressure
+static const float REVERSAL[3] = {0.04f, 0.12f, 0.2f};   // chance to answer pressure with an invincible move
+static const float PUNISH[3] = {0.25f, 0.7f, 0.95f};     // chance to punish a blocked heavy or special
 
 static float Sign(float v) {
     return v >= 0 ? 1.0f : -1.0f;
@@ -129,6 +132,10 @@ static void Execute(Game *g, int index, int reaction, FighterInput *input) {
         input->super = true;
         break;
     case R_PUNISH:
+        if (Attacking(t) && t->actionTime < ActiveEnd(t)) {
+            brain->block = 0.25f; // they recovered and swung again: keep guarding
+            break;
+        }
         if (self->energy >= SUPER_COST && g->difficulty >= 1 &&
             (self->character == CHAR_REN || distance < 330))
             input->super = true;
@@ -157,16 +164,28 @@ static void Neutral(Game *g, int index, FighterInput *input) {
     float distance = fabsf(t->position.x - self->position.x);
     float aggression = AGGRESSION[d] + (self->health < t->health - 250 ? 0.15f : 0);
     float preferred = ren ? (self->energy >= SPECIAL_COST ? 420 : 240) : 150;
-    if (t->knockdown > 0) {
-        // Walk up for a well-timed attack as the opponent stands.
+    if (t->knockdown > 0 || (t->invincible > 0 && t->grounded)) {
+        // Walk up, then either guard their wake-up or time a jab for the first vulnerable frame.
         brain->move = distance > 115 ? towards : 0;
-        if (t->knockdown < 0.12f && distance < 125 && GameRandom(g) < 0.08f + d * 0.05f)
-            input->light = true;
+        if (t->knockdown <= 0 && t->invincible < 0.06f && distance < 120) {
+            if (GameRandom(g) < 0.35f + d * 0.15f)
+                input->light = true;
+            else
+                brain->block = 0.3f;
+        }
         return;
     }
     if (brain->think > 0)
         return;
     brain->think = 0.2f - d * 0.035f + GameRandom(g) * 0.14f;
+    if (Attacking(t) && distance < 170 && d > 0) {
+        // Never swing into active pressure: that is how counter-hits happen. Guard or step out.
+        if (GameRandom(g) < 0.5f + d * 0.2f)
+            brain->block = 0.25f;
+        else
+            brain->move = -towards;
+        return;
+    }
     float roll = GameRandom(g);
     if (self->energy >= SUPER_COST && d >= 1 && roll < 0.12f + d * 0.06f) {
         bool reachable = ren ? t->grounded && !t->blocking : distance < 300;
@@ -196,9 +215,9 @@ static void Neutral(Game *g, int index, FighterInput *input) {
         brain->move = (GameRandom(g) - 0.45f) * towards * 0.9f;
         if (ren && distance > 300 && self->energy >= SPECIAL_COST && roll < 0.35f + d * 0.1f && t->grounded)
             input->special = true;
-        else if (distance <= 112 && roll < 0.42f + aggression * 0.2f)
+        else if (distance <= 112 && roll < (t->action == ACTION_IDLE ? 0.42f + aggression * 0.2f - d * 0.12f : 0.15f))
             input->light = true;
-        else if (distance > 112 && distance < 140 && roll < 0.3f + aggression * 0.15f)
+        else if (distance > 112 && distance < 145 && roll < 0.3f + aggression * 0.15f + d * 0.1f)
             input->heavy = true;
         else if (distance < 140 && roll > 0.9f)
             brain->block = 0.25f;
@@ -264,7 +283,44 @@ FighterInput GameAIInput(Game *g, int index, float dt) {
         return input;
     }
 
-    // 3. Read the situation and react after a delay.
+    // 3a. Defensive instincts: read pressure before it lands and plan the punish while guarding.
+    brain->patience -= dt;
+    bool close = distance < 160;
+    bool approaching = t->velocity.x * Sign(self->position.x - t->position.x) > 60 || t->action == ACTION_DASH;
+    bool startup = Attacking(t) && t->actionTime < ActiveEnd(t);
+    if (self->grounded && !self->launched && self->knockdown <= 0 && close && (startup || approaching) &&
+        brain->patience <= 0 && self->action == ACTION_IDLE) {
+        brain->patience = 0.16f + GameRandom(g) * 0.08f;
+        float roll = GameRandom(g);
+        if (roll < GUARD_READ[d]) {
+            brain->block = fmaxf(brain->block, 0.26f + GameRandom(g) * 0.16f);
+        } else if (roll < GUARD_READ[d] + REVERSAL[d] && FighterCanAct(self)) {
+            if (self->character == CHAR_KAE && self->energy >= SPECIAL_COST)
+                input.special = true;
+            else if (self->energy >= SUPER_COST)
+                input.super = true;
+            else if (self->energy >= DASH_COST)
+                input.dash = true, input.move = -towards;
+        }
+    }
+    bool canCancel = t->connected && t->energy >= SPECIAL_COST; // a blocked heavy may still cancel
+    bool punishable = (t->action == ACTION_HEAVY && t->actionTime > 0.3f && !canCancel) ||
+                      (t->action == ACTION_SPECIAL && t->character == CHAR_KAE && t->actionTime > 0.32f) ||
+                      (t->action == ACTION_SPECIAL && t->character == CHAR_REN && t->actionTime > 0.3f && distance < 200) ||
+                      t->lag > 0.12f;
+    if (punishable && (self->blockstun > 0 || brain->block > 0) && brain->pending != R_PUNISH && distance < 260 &&
+        brain->stimulus != S_WHIFF) {
+        brain->stimulus = S_WHIFF;
+        if (GameRandom(g) < PUNISH[d]) {
+            brain->pending = R_PUNISH;
+            brain->reaction = 0;
+            brain->block = 0;
+        }
+    }
+    if (self->knockdown > 0 && self->knockdown < 0.1f && GameRandom(g) < GUARD_READ[d])
+        brain->block = 0.3f; // guard on wake-up
+
+    // 3b. Read the situation and react after a delay.
     int stimulus = Perceive(g, index);
     if (stimulus != S_NONE && stimulus != brain->stimulus) {
         float accuracy = ACCURACY[d];
@@ -295,8 +351,12 @@ FighterInput GameAIInput(Game *g, int index, float dt) {
     }
 
     // 5. Footsies.
+    bool walkingIn = approaching && distance > 105 && distance < 150 && t->grounded && t->action == ACTION_IDLE;
+    if (walkingIn && !Attacking(t) && FighterCanAct(self) && self->action == ACTION_IDLE && brain->block <= 0 &&
+        GameRandom(g) < 0.04f + d * 0.05f)
+        input.heavy = true; // stuff out a careless walk-in
     if (FighterCanAct(self) && self->action == ACTION_IDLE && self->grounded && brain->block <= 0 &&
-        brain->pending == R_NONE)
+        brain->pending == R_NONE && !input.heavy && !input.special && !input.super && !input.dash)
         Neutral(g, index, &input);
 
     if (input.move == 0)
