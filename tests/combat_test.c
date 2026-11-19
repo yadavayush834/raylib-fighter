@@ -152,6 +152,135 @@ static void TestHurtReaction(void) {
     Tick(&guarded, 30, (FighterInput){.light = true}, (FighterInput){.block = true});
     assert(guarded.fighters[1].hurtDuration == 0);
 }
+
+static int CountEvents(const Game *g, EventType type) {
+    int n = 0;
+    for (int i = 0; i < g->eventCount; ++i)
+        n += g->events[i].type == type;
+    return n;
+}
+static void Press(Game *g, FighterInput a, FighterInput b, int ticks, EventType watch, int *seen) {
+    for (int i = 0; i < ticks; ++i) {
+        GameUpdate(g, a, b, FIXED_DT);
+        if (seen)
+            *seen += CountEvents(g, watch);
+        a.jump = a.light = a.heavy = a.special = a.dash = a.super = false;
+        b.jump = b.light = b.heavy = b.special = b.dash = b.super = false;
+    }
+}
+static void TestChainLaunches(void) {
+    Game g = Fight();
+    int launches = 0;
+    Press(&g, (FighterInput){.light = true}, (FighterInput){0}, 14, EV_LAUNCH, &launches);
+    Press(&g, (FighterInput){.light = true}, (FighterInput){0}, 14, EV_LAUNCH, &launches);
+    Press(&g, (FighterInput){.heavy = true}, (FighterInput){0}, 60, EV_LAUNCH, &launches);
+    assert(launches == 1);
+    assert(g.fighters[0].maxCombo >= 3);
+    Press(&g, (FighterInput){0}, (FighterInput){0}, 120, EV_COUNT, NULL);
+    assert(g.fighters[1].knockdown > 0 || g.fighters[1].invincible > 0 || FighterCanAct(&g.fighters[1]));
+    assert(g.fighters[0].combo == 0 && g.fighters[0].lastComboDamage > 64 + 50);
+}
+static void TestDamageScaling(void) {
+    Game g = Fight();
+    Press(&g, (FighterInput){.light = true}, (FighterInput){0}, 14, EV_COUNT, NULL);
+    Press(&g, (FighterInput){.light = true}, (FighterInput){0}, 14, EV_COUNT, NULL);
+    Press(&g, (FighterInput){.light = true}, (FighterInput){0}, 30, EV_COUNT, NULL);
+    float dealt = MAX_HEALTH - g.fighters[1].health;
+    assert(g.fighters[0].maxCombo == 3);
+    assert(dealt < 64 * 3 && dealt > 64 * 2);
+}
+static void TestCounterHit(void) {
+    Game g = Fight();
+    g.fighters[1].action = ACTION_HEAVY; // caught in start-up
+    g.fighters[1].actionTime = 0.02f;
+    int counters = 0;
+    Press(&g, (FighterInput){.light = true}, (FighterInput){0}, 30, EV_COUNTER, &counters);
+    assert(counters == 1);
+    assert(fabsf(g.fighters[1].health - (MAX_HEALTH - 64 * 1.2f)) < 0.01f);
+}
+static void TestGuardBreak(void) {
+    Game g = Fight();
+    g.fighters[1].energy = 3;
+    int breaks = 0;
+    Press(&g, (FighterInput){.heavy = true}, (FighterInput){.block = true}, 50, EV_GUARD_BREAK, &breaks);
+    assert(breaks == 1);
+    assert(g.fighters[1].stun > 0.3f);
+}
+static void TestKnockdownAndWakeUp(void) {
+    Game g = Fight();
+    g.fighters[1].velocity.y = -500;
+    g.fighters[1].grounded = false;
+    g.fighters[1].position.y = GROUND_Y - 60;
+    Press(&g, (FighterInput){.heavy = true}, (FighterInput){0}, 40, EV_COUNT, NULL);
+    int downs = 0;
+    Press(&g, (FighterInput){0}, (FighterInput){0}, 200, EV_KNOCKDOWN, &downs);
+    assert(downs == 1);
+    Press(&g, (FighterInput){0}, (FighterInput){0}, 120, EV_COUNT, NULL);
+    assert(FighterCanAct(&g.fighters[1]));
+}
+static void TestBackdash(void) {
+    Game g = Fight();
+    Tick(&g, 1, (FighterInput){.dash = true, .move = -1}, (FighterInput){0});
+    assert(g.fighters[0].action == ACTION_BACKDASH);
+    assert(g.fighters[0].facing == 1 && g.fighters[0].velocity.x < 0);
+}
+static void TestAirAttacks(void) {
+    Game g = Fight();
+    g.fighters[1].position.x = 450;
+    Tick(&g, 25, (FighterInput){.jump = true, .move = 1}, (FighterInput){0});
+    Tick(&g, 1, (FighterInput){.heavy = true}, (FighterInput){0});
+    assert(g.fighters[0].action == ACTION_DIVE);
+    Tick(&g, 80, (FighterInput){0}, (FighterInput){0});
+    assert(g.fighters[1].health < MAX_HEALTH);
+}
+static void TestRenSuper(void) {
+    Game g = Fight();
+    g.fighters[1].position.x = 900;
+    g.fighters[0].energy = MAX_ENERGY;
+    int flashes = 0;
+    Press(&g, (FighterInput){.super = true}, (FighterInput){0}, 300, EV_SUPER_FLASH, &flashes);
+    assert(flashes == 1);
+    assert(g.fighters[1].health < MAX_HEALTH - 250);
+    assert(g.fighters[0].supersLanded == 1);
+}
+static void TestKaeSuperAndUppercut(void) {
+    Game g;
+    GameStartEx(&g, MODE_LOCAL, 1, 7, CHAR_KAE, CHAR_REN, STAGE_STORM_TERRACE);
+    g.phase = ROUND_FIGHT;
+    g.fighters[0].position.x = 300;
+    g.fighters[1].position.x = 600;
+    g.fighters[0].energy = MAX_ENERGY;
+    Press(&g, (FighterInput){.super = true}, (FighterInput){0}, 400, EV_COUNT, NULL);
+    assert(g.fighters[1].health < MAX_HEALTH - 250);
+    // Crimson Ascent beats a jump-in.
+    g = (Game){0};
+    GameStartEx(&g, MODE_LOCAL, 1, 7, CHAR_KAE, CHAR_REN, STAGE_SANCTUARY);
+    g.phase = ROUND_FIGHT;
+    g.fighters[0].position.x = 300;
+    g.fighters[1].position.x = 360;
+    g.fighters[1].grounded = false;
+    g.fighters[1].position.y = GROUND_Y - 120;
+    int launches = 0;
+    Press(&g, (FighterInput){.special = true}, (FighterInput){0}, 40, EV_LAUNCH, &launches);
+    assert(launches == 1);
+}
+static void TestHardAIDefends(void) {
+    Game g;
+    GameStart(&g, MODE_SOLO, 2, 99);
+    g.phase = ROUND_FIGHT;
+    int guards = 0, hits = 0;
+    for (int i = 0; i < 120 * 20; ++i) {
+        // Mash heavy kicks from close range and count how the CPU answers.
+        FighterInput p = {.heavy = i % 50 == 0, .move = fabsf(g.fighters[0].position.x - g.fighters[1].position.x) > 110 ? (g.fighters[0].position.x < g.fighters[1].position.x ? 1.0f : -1.0f) : 0};
+        GameUpdate(&g, p, (FighterInput){0}, FIXED_DT);
+        guards += CountEvents(&g, EV_BLOCK);
+        hits += CountEvents(&g, EV_HIT);
+        if (g.phase != ROUND_FIGHT)
+            break;
+    }
+    assert(guards > 0);
+    assert(hits > 0);
+}
 int main(void) {
     TestHurtReaction();
     TestAttackWindows();
@@ -166,6 +295,16 @@ int main(void) {
     TestTraining();
     TestBufferedAttack();
     TestDeterministicAI();
-    puts("13 combat regression checks passed.");
+    TestChainLaunches();
+    TestDamageScaling();
+    TestCounterHit();
+    TestGuardBreak();
+    TestKnockdownAndWakeUp();
+    TestBackdash();
+    TestAirAttacks();
+    TestRenSuper();
+    TestKaeSuperAndUppercut();
+    TestHardAIDefends();
+    puts("23 combat regression checks passed.");
     return 0;
 }

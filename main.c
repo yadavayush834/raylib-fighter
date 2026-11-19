@@ -209,15 +209,13 @@ int main(int argc, char **argv) {
                 MergeInput(&pending[0], ReadPlayer(0));
                 MergeInput(&pending[1], ReadPlayer(1));
                 accumulator += dt;
-                unsigned events = 0;
                 while (accumulator >= FIXED_DT) {
                     GameUpdate(&game, pending[0], pending[1], FIXED_DT);
-                    events |= game.soundEvents;
+                    GameAudioPlay(&audio, game.events, game.eventCount);
                     ConsumeButtons(&pending[0]);
                     ConsumeButtons(&pending[1]);
                     accumulator -= FIXED_DT;
                 }
-                GameAudioPlay(&audio, events);
             }
         }
         if (capture && strcmp(scene, "pause") == 0 && frame >= frames - 1)

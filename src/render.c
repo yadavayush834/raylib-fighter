@@ -402,7 +402,7 @@ static void Controls(const Art *a, bool local) {
 
 void DrawMatch(const Art *a, const Game *g, bool hitboxes, bool reducedMotion) {
     DrawArena(a, reducedMotion ? 0 : g->totalTime, false);
-    float shake = reducedMotion ? 0 : g->shake;
+    float shake = reducedMotion ? 0 : g->hitstop * 60;
     rlPushMatrix();
     rlTranslatef(sinf(g->totalTime * 175) * shake, cosf(g->totalTime * 143) * shake * .5f, 0);
     DrawFighter(a, &g->fighters[0], 0, g->totalTime, 1.45f);
@@ -419,15 +419,6 @@ void DrawMatch(const Art *a, const Game *g, bool hitboxes, bool reducedMotion) {
         DrawCircleV(p->position, 15, accent);
         DrawCircleV(p->position, 8, PAPER);
         DrawCircleLinesV(p->position, 21 + sinf(g->totalTime * 30) * 3, accent);
-    }
-    for (int i = 0; i < MAX_PARTICLES; ++i) {
-        const Particle *p = &g->particles[i];
-        if (p->life <= 0)
-            continue;
-        float life = p->life / p->maxLife;
-        DrawLineEx(p->position,
-                   (Vector2){p->position.x - p->velocity.x * .025f, p->position.y - p->velocity.y * .025f},
-                   p->radius * life, Fade(p->color, life));
     }
     if (hitboxes) {
         for (int i = 0; i < 2; ++i) {
