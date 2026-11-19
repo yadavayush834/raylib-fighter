@@ -1,0 +1,32 @@
+# Local versus mirror match: both keyboard layouts, guard, dashes, air attacks.
+0.50 tap S
+0.70 tap ENTER
+1.20 tap D
+1.40 tap J
+1.50 tap COMMA
+1.90 snap versus-select
+2.10 tap J
+2.80 snap versus-splash
+7.70 snap versus-fight-start
+7.80 down D
+7.80 down LEFT
+8.20 up D
+8.20 up LEFT
+8.25 tap J
+8.30 tap SLASH
+8.40 tap J
+8.55 tap K
+8.80 tap PERIOD
+9.10 snap versus-trade
+9.30 tap UP
+9.60 tap PERIOD
+10.0 snap versus-air
+10.4 down DOWN
+10.5 tap J
+10.62 tap J
+11.0 up DOWN
+11.1 snap versus-guard
+11.4 tap RSHIFT
+11.6 tap SPACE
+12.0 snap versus-dash
+12.2 quit
